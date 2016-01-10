@@ -2,6 +2,8 @@ var express = require('express');
 var router = express.Router();
 var Busboy = require('busboy');
 var fs = require('fs');
+var request = require('request');
+var multiparty = require('multiparty');
 var inspect = require('util').inspect;
 /* GET home page. */
 router.get('/', function(req, res, next) {
@@ -10,29 +12,38 @@ router.get('/', function(req, res, next) {
     });
 });
 
-router.use('/upload', function(req, res, next) {
+router.put('/upload', function(req, res, next) {
 
-    var busboy = new Busboy({
-        headers: req.headers
+    var form = new multiparty.Form();
+    var bucket;
+    form.on('field', function(name, value) {
+        console.log('field is retrieved from part!');
+        if (name === 'bucket') {
+            bucket = value;
+        }
     });
-    busboy.on('file', function(fieldname, file, filename, encoding, mimetype) {
-        console.log('File [' + fieldname + ']: filename: ' + filename);
-        file.on('data', function(data) {
-            console.log('File [' + fieldname + '] got ' + data.length + ' bytes');
-        });
-        file.on('end', function() {
-            console.log('File [' + fieldname + '] Finished');
-        });
-        console.log('we can stream it to diffent project! ' + typeof file);
-    });
-    busboy.on('field', function(fieldname, val, fieldnameTruncated, valTruncated) {
-        console.log('Field [' + fieldname + ']: value: ' + inspect(val));
-    });
-    busboy.on('finish', function() {
+    form.on('part', function(part) {
         console.log('Done parsing form!');
-        res.json('upload successful! ');
+        var FormData = require("form-data");
+        var form = new FormData();
+
+        form.append("thumbnail", part, {
+            filename: part.filename,
+            contentType: part["content-type"]
+        });
+
+        var r = request.put("http://localhost:4000/upload", {
+            "headers": {
+                "transfer-encoding": "chunked"
+            }
+        }, function(err, httpResponse, body) {
+            res.send(httpResponse);
+        });
+
+        r._form = form
+
     });
-    req.pipe(busboy);
+    form.parse(req);
 
 })
 
