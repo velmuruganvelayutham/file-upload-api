@@ -37,7 +37,7 @@ router.put('/upload', function(req, res, next) {
                 "transfer-encoding": "chunked"
             }
         }, function(err, httpResponse, body) {
-            res.send(httpResponse);
+            res.json("success");
         });
 
         r._form = form
